@@ -10,7 +10,9 @@ solve(CNF) ->
     %TODO spawn and listen
     spawn(?MODULE, master, [Formula, Unit, self(), [], 4, NumVariables]),
     receive
-        {sat, Solution} -> {sat, Solution};
+        {sat, Solution} ->
+            %TODO kill children
+            {sat, Solution};
         X -> X
     end.
 
@@ -25,7 +27,7 @@ master(OGamma, OUnit, Parent, Children, Resources, NumVariables) ->
         true -> Parent ! {sat, gb_sets:to_list(Unit)};
         false ->
             case gb_sets:is_element(gb_sets:new(), Gamma) of
-                true -> unsat;
+                true -> Parent ! {unsat, gb_sets:size(Unit), self()};
                 false ->
                     Literal = someLiteral(Gamma),
                         
@@ -33,14 +35,14 @@ master(OGamma, OUnit, Parent, Children, Resources, NumVariables) ->
                     UnitClauseNegated = gb_sets:singleton(-Literal),
                     
                     case Resources of
-                        0 ->
-                            Child = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, Literal, self(), 0]),
+                        1 ->
+                            Child = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), [], 1, NumVariables]),
                             receiveLoop(Gamma, Unit, Parent, [Child|Children], Literal, 0, NumVariables);
                         _ ->
                             {Res1, Res2} = halves(Resources),
-                            Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, Parent, Res1, NumVariables]),
-                            Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, Parent, Res2, NumVariables]),
-                            Parent ! {Child1, Child2}
+                            Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, Parent, [], Res1, NumVariables]),
+                            Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, Parent, [], Res2, NumVariables]),
+                            Parent ! [Child1|[Child2]]
                     end
 
 
@@ -57,20 +59,26 @@ receiveLoop(Gamma, Unit, Parent, Children, Literal, X, NumVariables) ->
     receive
         {sat, Solution} ->
             Parent ! {sat, Solution},
-            map(fun(Child) -> exit(Child, sat) end, Children);
+            lists:map(fun(Child) -> exit(Child, sat) end, Children);
         {unsat, UsedLiterals, Child} ->
-            NX = X + math:pow(2, (UsedLiterals - length(Unit))),   %TODO length nicht jedes mal neu aufrufen
-            case math:pow(2, (NumVariables - length(Unit))) of
-                NX -> Parent ! length(Unit);
+            NX = X + math:pow(2, UsedLiterals),   %TODO length nicht jedes mal neu aufrufen
+            case math:pow(2, (NumVariables - gb_sets:size(Unit))) of
+                NX ->
+                    Parent ! {unsat, gb_sets:size(Unit), self()};
+                    %TODO kill children
                 _ ->
                     self() ! 1,
                     receiveLoop(Gamma, Unit, Parent, lists:delete(Child, Children), Literal, X, NumVariables)
             end;
-        NewResources ->
-            map(fun(Child) -> Child ! Parent end, Children),
+        NewChildren when is_list(NewChildren) ->
+            receiveLoop(Gamma, Unit, Parent, NewChildren ++ Children, Literal, X, NumVariables);
+        NewParent when is_pid(NewParent) ->
+            receiveLoop(Gamma, Unit, NewParent, Children, Literal, X, NumVariables);
+        NewResources when is_integer(NewResources) ->
+            lists:map(fun(Child) -> Child ! Parent end, Children),
             
             UnitClauseNegated = gb_sets:singleton(-Literal),
-            Child = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, Parent, NewResources, NumVariables]),
+            Child = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, Parent, [], NewResources, NumVariables]),
             Parent ! [Child|Children]
     end.
 
