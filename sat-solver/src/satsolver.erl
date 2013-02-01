@@ -71,6 +71,7 @@ receiveLoop(Gamma, Unit, Parent, Children, Literal, X, NumVariables) ->
                     receiveLoop(Gamma, Unit, Parent, lists:delete(Child, Children), Literal, X, NumVariables)
             end;
         NewChildren when is_list(NewChildren) ->
+            lists:map(fun(Child) -> Child ! self() end, NewChildren),
             receiveLoop(Gamma, Unit, Parent, NewChildren ++ Children, Literal, X, NumVariables);
         NewParent when is_pid(NewParent) ->
             receiveLoop(Gamma, Unit, NewParent, Children, Literal, X, NumVariables);
