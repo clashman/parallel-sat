@@ -1,0 +1,7 @@
+c Beispiel von Seite 18 in 
+c [http://www.cs.uni-potsdam.de/wv/lehre/05WS/05-AutoProbSolv/slides/dpll.pdf]
+p cnf 3 4
+-1 2 0
+-1 3 0
+2 3 0
+-2 -3
