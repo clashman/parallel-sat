@@ -33,21 +33,11 @@ master(OGamma, OUnit, Parent, Children, Resources, NumVariables) ->
                         
                     UnitClause = gb_sets:singleton(Literal),
                     UnitClauseNegated = gb_sets:singleton(-Literal),
-                    
-                    case Resources of
-                        1 ->
-                            Child = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), [], 1, NumVariables]),
-                            receiveLoop(Gamma, Unit, Parent, [Child|Children], Literal, 0, NumVariables);
-                        _ ->
-                            {Res1, Res2} = halves(Resources),
-                            Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, Parent, [], Res1, NumVariables]),
-                            Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, Parent, [], Res2, NumVariables]),
-                            Parent ! [Child1|[Child2]]
-                    end
 
-
-
-
+                    {Res1, Res2} = halves(Resources),
+                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), [], Res1, NumVariables]),
+                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), [], Res2, NumVariables]),
+                    receiveLoop(Gamma, Unit, Parent, [Child1|[Child2]], Literal, 0, NumVariables)
             end
     end.
 
@@ -55,32 +45,19 @@ master(OGamma, OUnit, Parent, Children, Resources, NumVariables) ->
 
 
 
-receiveLoop(Gamma, Unit, Parent, Children, Literal, X, NumVariables) ->
+receiveLoop(Gamma, Unit, Parent, Children, Literal, Answers, NumVariables) ->
     receive
         {sat, Solution} ->
             Parent ! {sat, Solution},
             lists:map(fun(Child) -> exit(Child, sat) end, Children);
         {unsat, UsedLiterals, Child} ->
-            NX = X + math:pow(2, UsedLiterals),   %TODO length nicht jedes mal neu aufrufen
-            case math:pow(2, (NumVariables - gb_sets:size(Unit))) of
-                NX ->
+            case Answers of
+                1 ->
                     Parent ! {unsat, gb_sets:size(Unit), self()};
                     %TODO kill children
-                _ ->
-                    self() ! 1,
-                    receiveLoop(Gamma, Unit, Parent, lists:delete(Child, Children), Literal, X, NumVariables)
-            end;
-        NewChildren when is_list(NewChildren) ->
-            lists:map(fun(Child) -> Child ! self() end, NewChildren),
-            receiveLoop(Gamma, Unit, Parent, NewChildren ++ Children, Literal, X, NumVariables);
-        NewParent when is_pid(NewParent) ->
-            receiveLoop(Gamma, Unit, NewParent, Children, Literal, X, NumVariables);
-        NewResources when is_integer(NewResources) ->
-            lists:map(fun(Child) -> Child ! Parent end, Children),
-            
-            UnitClauseNegated = gb_sets:singleton(-Literal),
-            Child = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, Parent, [], NewResources, NumVariables]),
-            Parent ! [Child|Children]
+                0 ->
+                    receiveLoop(Gamma, Unit, Parent, lists:delete(Child, Children), Literal, Answers+1, NumVariables)
+            end
     end.
 
 
