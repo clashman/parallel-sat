@@ -8,15 +8,17 @@ solve(CNF) ->
     Unit = gb_sets:new(),
     {Formula, NumVariables} = CNF,
     %TODO spawn and listen
-    spawn(?MODULE, master, [Formula, Unit, self(), [], 4, NumVariables]),
+    spawn(?MODULE, master, [Formula, Unit, self(), [], 4, {pow(2, NumVariables), 0}]),
     receive
         {sat, Solution} ->
             %TODO kill children
             {sat, Solution};
-        X -> X
+        {unsat, _, _, BurnedSolutions} ->
+            io:format("tested ~B possibilities\n", [BurnedSolutions]),
+            unsat
     end.
 
-master(OGamma, OUnit, Parent, Children, Resources, NumVariables) ->
+master(OGamma, OUnit, Parent, Children, Resources, {Solutions, BurnedSolutions}) ->
 %    Literal = someLiteral(Gamma),
     
     
@@ -27,7 +29,7 @@ master(OGamma, OUnit, Parent, Children, Resources, NumVariables) ->
         true -> Parent ! {sat, gb_sets:to_list(Unit)};
         false ->
             case gb_sets:is_element(gb_sets:new(), Gamma) of
-                true -> Parent ! {unsat, gb_sets:size(Unit), self()};
+                true -> Parent ! {unsat, self(), Resources, Solutions};
                 false ->
                     Literal = someLiteral(Gamma),
                         
@@ -35,9 +37,9 @@ master(OGamma, OUnit, Parent, Children, Resources, NumVariables) ->
                     UnitClauseNegated = gb_sets:singleton(-Literal),
 
                     {Res1, Res2} = halves(Resources),
-                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), [], Res1, NumVariables]),
-                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), [], Res2, NumVariables]),
-                    receiveLoop(Gamma, Unit, Parent, [Child1|[Child2]], Literal, 0, NumVariables)
+                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), [], Res1, {Solutions div 2, 0}]),
+                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), [], Res2, {Solutions div 2, 0}]),
+                    receiveLoop(Gamma, Unit, Parent, [Child1|[Child2]], Literal, 0, {Solutions, 0})
             end
     end.
 
@@ -45,19 +47,22 @@ master(OGamma, OUnit, Parent, Children, Resources, NumVariables) ->
 
 
 
-receiveLoop(Gamma, Unit, Parent, Children, Literal, Answers, NumVariables) ->
+receiveLoop(Gamma, Unit, Parent, Children, Literal, Answers, {Solutions, BurnedSolutions}) ->
     receive
         {sat, Solution} ->
-            Parent ! {sat, Solution},
-            lists:map(fun(Child) -> exit(Child, sat) end, Children);
-        {unsat, UsedLiterals, Child} ->
-            case Answers of
-                1 ->
-                    Parent ! {unsat, gb_sets:size(Unit), self()};
-                    %TODO kill children
+            Parent ! {sat, Solution};
+            %lists:map(fun(Child) -> exit(Child, sat) end, Children);
+        {unsat, Child, Resources, NewBurnedSolutions} ->
+            NChildren = lists:delete(Child, Children),
+            NBurnedSolutions = NewBurnedSolutions + BurnedSolutions,
+            case Solutions - NBurnedSolutions of
                 0 ->
-                    receiveLoop(Gamma, Unit, Parent, lists:delete(Child, Children), Literal, Answers+1, NumVariables)
-            end
+                    Parent ! {unsat, self(), Resources, NBurnedSolutions};
+                _ ->
+                    %Parent ! Resources,
+                    receiveLoop(Gamma, Unit, Parent, lists:delete(Child, Children), Literal, Answers+1, {Solutions, NBurnedSolutions})
+            end%;
+        %Resources -> Parent ! Resources
     end.
 
 
@@ -116,6 +121,13 @@ unitPropagation(Gamma, Unit) ->
 eliminate(Literal, Gamma) ->
     NGamma = gb_sets:filter(fun(Clause) -> gb_sets:is_element(Literal, Clause) == false end, Gamma), %only keep clauses containing Literal
     map(fun(Clause) -> gb_sets:delete_any(-Literal, Clause) end, NGamma).   %remove -Literal from all clauses
+
+pow(N, M) ->
+    pow(N, M, 1).
+pow(_, 0, Acc) ->
+    Acc;
+pow(N, M, Acc) ->
+    pow(N, M-1, Acc * N).
 
 
 
