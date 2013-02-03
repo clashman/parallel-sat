@@ -85,7 +85,7 @@ receiveLoop(Gamma, Unit, Parent, Children, Literal, X, NumVariables) ->
 
 
 halves(N) when N rem 2 == 0 -> {N div 2, N div 2};
-halves(N) -> {N div 2, N div 2 - 1}.
+halves(N) -> {N div 2 + 1, N div 2}.
 
 
 dpll(OGamma, OUnit) ->
