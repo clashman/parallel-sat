@@ -53,6 +53,7 @@ receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, Literal, {Solu
             Parent ! {sat, Solution};
             %lists:map(fun(Child) -> exit(Child, sat) end, Children);
         {unsat, Child, Resources, NewBurnedSolutions} ->
+            io:format("burned ~B possibilities\n", [NewBurnedSolutions]),
             NChildren = lists:delete(Child, Children),
             NBurnedSolutions = NewBurnedSolutions + BurnedSolutions,
             case Solutions - NBurnedSolutions of
