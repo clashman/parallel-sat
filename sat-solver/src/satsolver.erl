@@ -18,28 +18,28 @@ solve(CNF) ->
             unsat
     end.
 
-master(OGamma, OUnit, Parent, Resources, Solutions) ->
+master(Gamma, Unit, Parent, Resources, Solutions) ->
 %    Literal = someLiteral(Gamma),
     
     
     
     
-    {Gamma, Unit} = unitPropagation(OGamma, OUnit),
-    case gb_sets:is_empty(Gamma) of
-        true -> Parent ! {sat, gb_sets:to_list(Unit)};
+    {NGamma, NUnit} = unitPropagation(Gamma, Unit),
+    case gb_sets:is_empty(NGamma) of
+        true -> Parent ! {sat, gb_sets:to_list(NUnit)};
         false ->
-            case gb_sets:is_element(gb_sets:new(), Gamma) of
+            case gb_sets:is_element(gb_sets:new(), NGamma) of
                 true -> Parent ! {unsat, self(), Resources, Solutions};
                 false ->
-                    Literal = someLiteral(Gamma),
+                    Literal = someLiteral(NGamma),
                         
                     UnitClause = gb_sets:singleton(Literal),
                     UnitClauseNegated = gb_sets:singleton(-Literal),
 
                     {Res1, Res2} = halves(Resources),
-                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
-                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
-                    receiveLoop(Gamma, Unit, Parent, {[Child1|[Child2]], 0}, Literal, {Solutions, 0})
+                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, NGamma), NUnit, self(), Res1, Solutions div 2]),
+                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, NGamma), NUnit, self(), Res2, Solutions div 2]),
+                    receiveLoop(NGamma, NUnit, Parent, {[Child1|[Child2]], 0}, Literal, {Solutions, 0})
             end
     end.
 
@@ -47,7 +47,7 @@ master(OGamma, OUnit, Parent, Resources, Solutions) ->
 
 
 
-receiveLoop(Gamma, Unit, Parent, Children, Literal, Answers, {Solutions, BurnedSolutions}) ->
+receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, Literal, {Solutions, BurnedSolutions}) ->
     receive
         {sat, Solution} ->
             Parent ! {sat, Solution};
