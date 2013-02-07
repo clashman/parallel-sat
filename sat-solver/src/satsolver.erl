@@ -8,7 +8,7 @@ solve(CNF) ->
     Unit = gb_sets:new(),
     {Formula, NumVariables} = CNF,
     %TODO spawn and listen
-    spawn(?MODULE, master, [Formula, Unit, self(), [], 4, {pow(2, NumVariables), 0}]),
+    spawn(?MODULE, master, [Formula, Unit, self(), 4, pow(2, NumVariables)]),
     receive
         {sat, Solution} ->
             %TODO kill children
@@ -18,7 +18,7 @@ solve(CNF) ->
             unsat
     end.
 
-master(OGamma, OUnit, Parent, Children, Resources, {Solutions, BurnedSolutions}) ->
+master(OGamma, OUnit, Parent, Resources, Solutions) ->
 %    Literal = someLiteral(Gamma),
     
     
@@ -37,9 +37,9 @@ master(OGamma, OUnit, Parent, Children, Resources, {Solutions, BurnedSolutions})
                     UnitClauseNegated = gb_sets:singleton(-Literal),
 
                     {Res1, Res2} = halves(Resources),
-                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), [], Res1, {Solutions div 2, 0}]),
-                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), [], Res2, {Solutions div 2, 0}]),
-                    receiveLoop(Gamma, Unit, Parent, [Child1|[Child2]], Literal, 0, {Solutions, 0})
+                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
+                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
+                    receiveLoop(Gamma, Unit, Parent, {[Child1|[Child2]], 0}, Literal, {Solutions, 0})
             end
     end.
 
@@ -60,8 +60,14 @@ receiveLoop(Gamma, Unit, Parent, Children, Literal, Answers, {Solutions, BurnedS
                     Parent ! {unsat, self(), Resources, NBurnedSolutions};
                 _ ->
                     %Parent ! Resources,
-                    receiveLoop(Gamma, Unit, Parent, lists:delete(Child, Children), Literal, Answers+1, {Solutions, NBurnedSolutions})
-            end%;
+                    receiveLoop(Gamma, Unit, Parent, {NChildren, NumBiologicalChilds}, Literal, {Solutions, NBurnedSolutions})
+            end;
+        NewResources ->
+ %           case NumBiologicalChilds of
+ %               0 ->
+ %                   
+ %               1 ->
+                    todo
         %Resources -> Parent ! Resources
     end.
 
