@@ -163,7 +163,8 @@ nonContradictoryLiterals(Literals) ->
 
 
 
-testSolution(CNF, {sat, Solution}) ->    
+testSolution({CNF, NumVariables}, {sat, SolutionList}) ->
+    Solution = gb_sets:from_list(SolutionList),
     ContradictoryLiterals = gb_sets:filter(fun(Literal) -> gb_sets:is_element(-Literal, Solution) end, Solution),
     case gb_sets:is_empty(ContradictoryLiterals) of
         false -> invalid_contradictory_literals;
