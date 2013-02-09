@@ -31,15 +31,8 @@ master(Gamma, Unit, Parent, Resources, Solutions) ->
             case gb_sets:is_element(gb_sets:new(), NGamma) of
                 true -> Parent ! {unsat, self(), Resources, Solutions};
                 false ->
-                    Literal = someLiteral(NGamma),
-                        
-                    UnitClause = gb_sets:singleton(Literal),
-                    UnitClauseNegated = gb_sets:singleton(-Literal),
-
-                    {Res1, Res2} = halves(Resources),
-                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, NGamma), NUnit, self(), Res1, Solutions div 2]),
-                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, NGamma), NUnit, self(), Res2, Solutions div 2]),
-                    receiveLoop(NGamma, NUnit, Parent, {[Child1|[Child2]], 0}, Literal, {Solutions, 0})
+                    self() ! Resources,
+                    receiveLoop(NGamma, NUnit, Parent, {[], 0}, {Solutions, 0})
             end
     end.
 
@@ -47,7 +40,7 @@ master(Gamma, Unit, Parent, Resources, Solutions) ->
 
 
 
-receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, Literal, {Solutions, BurnedSolutions}) ->
+receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, {Solutions, BurnedSolutions}) ->
     receive
         {sat, Solution} ->
             Parent ! {sat, Solution};
@@ -61,14 +54,24 @@ receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, Literal, {Solu
                     Parent ! {unsat, self(), Resources, NBurnedSolutions};
                 _ ->
                     %Parent ! Resources,
-                    receiveLoop(Gamma, Unit, Parent, {NChildren, NumBiologicalChilds}, Literal, {Solutions, NBurnedSolutions})
+                    receiveLoop(Gamma, Unit, Parent, {NChildren, NumBiologicalChilds}, {Solutions, NBurnedSolutions})
             end;
         NewResources ->
+            Literal = someLiteral(Gamma),
+
+            UnitClause = gb_sets:singleton(Literal),
+            UnitClauseNegated = gb_sets:singleton(-Literal),
+
+            {Res1, Res2} = halves(NewResources),
+            Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
+            Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
+
+            receiveLoop(Gamma, Unit, Parent, {[Child1|[Child2|Children]], NumBiologicalChilds}, {Solutions, BurnedSolutions})
  %           case NumBiologicalChilds of
  %               0 ->
  %                   
  %               1 ->
-                    todo
+ %                   todo
         %Resources -> Parent ! Resources
     end.
 
@@ -163,7 +166,7 @@ nonContradictoryLiterals(Literals) ->
 
 
 
-testSolution({CNF, NumVariables}, {sat, SolutionList}) ->
+testSolution({CNF, _NumVariables}, {sat, SolutionList}) ->
     Solution = gb_sets:from_list(SolutionList),
     ContradictoryLiterals = gb_sets:filter(fun(Literal) -> gb_sets:is_element(-Literal, Solution) end, Solution),
     case gb_sets:is_empty(ContradictoryLiterals) of
