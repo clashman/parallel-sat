@@ -18,6 +18,12 @@ test() ->
     Solution3 = satsolver:solve(CNF3),
     R3 = check(CNF3, Solution3, unsat),
 
+    io:format("---------\n"),
+    print(1, R1),
+    print(2, R2),
+    print(3, R3),
+    io:format("---------\n"),
+
     case (R1 == R2) and (R2 == R3) and (R3 == ok) of
         true -> ok;
         false -> fail
@@ -27,24 +33,24 @@ check(CNF, Solution, ExpectedResult) ->
     case Solution of
         {sat, _Unit} ->
             case ExpectedResult of
-                unsat -> print(fail);
+                unsat -> fail;
                 sat ->
                     Result = satsolver:testSolution(CNF, Solution),
                     case Result of
-                        ok -> print(ok);
-                        _ -> print(fail)
+                        ok -> ok;
+                        _ -> fail
                     end
             end;
         unsat ->
             case ExpectedResult of
-                unsat -> print(ok);
-                sat -> print(fail)
+                unsat -> ok;
+                sat -> fail
             end
     end.
 
-print(ok) ->
-    io:format("ok\n"),
+print(N, ok) ->
+    io:format("~B: ok\n", [N]),
     ok;
-print(fail) ->
-    io:format("FAIL\n"),
+print(N, fail) ->
+    io:format("~B: FAIL\n", [N]),
     fail.
