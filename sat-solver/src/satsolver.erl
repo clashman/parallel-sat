@@ -13,7 +13,7 @@ solve(CNF) ->
         {sat, Solution} ->
             %TODO kill children
             {sat, Solution};
-        {unsat, _, _, BurnedSolutions} ->
+        {unsat, _, BurnedSolutions} ->
             io:format("tested ~B possibilities\n", [BurnedSolutions]),
             unsat
     end.
@@ -29,10 +29,13 @@ master(Gamma, Unit, Parent, Resources, Solutions) ->
         true -> Parent ! {sat, gb_sets:to_list(NUnit)};
         false ->
             case gb_sets:is_element(gb_sets:new(), NGamma) of
-                true -> Parent ! {unsat, self(), Resources, Solutions};
+                true -> Parent ! {unsat, self(), Solutions};
                 false ->
-                    self() ! Resources,
-                    receiveLoop(NGamma, NUnit, Parent, {[], 0}, {Solutions, 0})
+                    case Resources of
+                        0 -> nop;
+                        _ -> self() ! Resources
+                    end,
+                    receiveLoop(NGamma, NUnit, Parent, {gb_trees:empty(), 0}, {Solutions, 0})
             end
     end.
 
@@ -45,20 +48,24 @@ receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, {Solutions, Bu
         {sat, Solution} ->
             Parent ! {sat, Solution};
             %lists:map(fun(Child) -> exit(Child, sat) end, Children);
-        {unsat, Child, Resources, NewBurnedSolutions} ->
+        {unsat, Child, NewBurnedSolutions} ->
             io:format("burned ~B possibilities\n", [NewBurnedSolutions]),
-            NChildren = lists:delete(Child, Children),
+            Resources = gb_trees:get(Child, Children),
+            NChildren = gb_trees:delete(Child, Children),
             NBurnedSolutions = NewBurnedSolutions + BurnedSolutions,
             case Solutions - NBurnedSolutions of
                 0 ->
-                    Parent ! {unsat, self(), Resources, NBurnedSolutions};
+                    Parent ! {unsat, self(), NBurnedSolutions};
                 _ ->
-                    %Parent ! Resources,
-                    receiveLoop(Gamma, Unit, Parent, {NChildren, NumBiologicalChilds}, {Solutions, NBurnedSolutions})
+                    {Receiver, OldRes} = gb_trees:smallest(NChildren),
+                    NNChildren = gb_trees:update(Receiver, OldRes + Resources, NChildren),
+
+                    Receiver ! Resources,
+                    receiveLoop(Gamma, Unit, Parent, {NNChildren, NumBiologicalChilds}, {Solutions, NBurnedSolutions})
             end;
         NewResources ->
-            NChildren = case Children of
-                [] -> 
+            NChildren = case gb_trees:is_empty(Children) of
+                true ->
                     Literal = someLiteral(Gamma),
         
                     UnitClause = gb_sets:singleton(Literal),
@@ -67,8 +74,8 @@ receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, {Solutions, Bu
                     {Res1, Res2} = halves(NewResources),
                     Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
                     Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
-                    [Child1|[Child2]];
-                Children ->
+                    gb_trees:insert(Child1, Res1, gb_trees:insert(Child2, Res2, gb_trees:empty()));
+                false ->
                     Children
             end,
 
