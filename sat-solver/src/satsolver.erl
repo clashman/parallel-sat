@@ -57,16 +57,22 @@ receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, {Solutions, Bu
                     receiveLoop(Gamma, Unit, Parent, {NChildren, NumBiologicalChilds}, {Solutions, NBurnedSolutions})
             end;
         NewResources ->
-            Literal = someLiteral(Gamma),
+            NChildren = case Children of
+                [] -> 
+                    Literal = someLiteral(Gamma),
+        
+                    UnitClause = gb_sets:singleton(Literal),
+                    UnitClauseNegated = gb_sets:singleton(-Literal),
+        
+                    {Res1, Res2} = halves(NewResources),
+                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
+                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
+                    [Child1|[Child2|Children]];
+                Children ->
+                    Children
+            end,
 
-            UnitClause = gb_sets:singleton(Literal),
-            UnitClauseNegated = gb_sets:singleton(-Literal),
-
-            {Res1, Res2} = halves(NewResources),
-            Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
-            Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
-
-            receiveLoop(Gamma, Unit, Parent, {[Child1|[Child2|Children]], NumBiologicalChilds}, {Solutions, BurnedSolutions})
+            receiveLoop(Gamma, Unit, Parent, {NChildren, NumBiologicalChilds}, {Solutions, BurnedSolutions})
  %           case NumBiologicalChilds of
  %               0 ->
  %                   
