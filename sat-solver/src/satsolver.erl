@@ -49,8 +49,7 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
             NChildren = gb_trees:delete(Child, Children),
             NBurnedSolutions = NewBurnedSolutions + BurnedSolutions,
             case Solutions - NBurnedSolutions of
-                0 ->
-                    Parent ! {unsat, self(), NBurnedSolutions};
+                0 -> Parent ! {unsat, self(), NBurnedSolutions};
                 _ ->
                     {Receiver, OldRes} = gb_trees:smallest(NChildren),
                     NNChildren = gb_trees:update(Receiver, OldRes + Resources, NChildren),
@@ -60,6 +59,7 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
             end;
         NewResources ->
             NChildren = case gb_trees:is_empty(Children) of
+                false -> Children;
                 true ->
                     Literal = someLiteral(Gamma),
 
@@ -69,9 +69,7 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
                     {Res1, Res2} = halves(NewResources),
                     Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
                     Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
-                    gb_trees:insert(Child1, Res1, gb_trees:insert(Child2, Res2, gb_trees:empty()));
-                false ->
-                    Children
+                    gb_trees:insert(Child1, Res1, gb_trees:insert(Child2, Res2, gb_trees:empty()))
             end,
             receiveLoop(Gamma, Unit, Parent, NChildren, {Solutions, BurnedSolutions})
     end.
@@ -92,11 +90,11 @@ dpll(OGamma, OUnit) ->
                     Literal = someLiteral(Gamma),
                     Disjunction = gb_sets:singleton(Literal),
                     case dpll(gb_sets:insert(Disjunction, Gamma), Unit) of
+                        SAT -> SAT;
                         unsat ->
                             DisjunctionWithNegatedLiteral = gb_sets:singleton(-Literal),
                             NGamma = gb_sets:insert(DisjunctionWithNegatedLiteral, Gamma),
-                            dpll(NGamma, Unit);
-                        SAT -> SAT
+                            dpll(NGamma, Unit)
                     end
             end
     end.
