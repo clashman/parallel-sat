@@ -60,6 +60,7 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
             end;
         NewResources ->
             NChildren = case gb_trees:is_empty(Children) of
+                false -> Children;
                 true ->
                     Literal = someLiteral(Gamma),
 
@@ -69,9 +70,7 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
                     {Res1, Res2} = halves(NewResources),
                     Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
                     Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
-                    gb_trees:insert(Child1, Res1, gb_trees:insert(Child2, Res2, gb_trees:empty()));
-                false ->
-                    Children
+                    gb_trees:insert(Child1, Res1, gb_trees:insert(Child2, Res2, gb_trees:empty()))
             end,
             receiveLoop(Gamma, Unit, Parent, NChildren, {Solutions, BurnedSolutions})
     end.
