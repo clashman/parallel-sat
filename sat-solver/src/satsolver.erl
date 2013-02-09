@@ -35,7 +35,7 @@ master(Gamma, Unit, Parent, Resources, Solutions) ->
                         0 -> nop;
                         _ -> self() ! Resources
                     end,
-                    receiveLoop(NGamma, NUnit, Parent, {gb_trees:empty(), 0}, {Solutions, 0})
+                    receiveLoop(NGamma, NUnit, Parent, gb_trees:empty(), {Solutions, 0})
             end
     end.
 
@@ -43,7 +43,7 @@ master(Gamma, Unit, Parent, Resources, Solutions) ->
 
 
 
-receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, {Solutions, BurnedSolutions}) ->
+receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
     receive
         {sat, Solution} ->
             Parent ! {sat, Solution};
@@ -61,7 +61,7 @@ receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, {Solutions, Bu
                     NNChildren = gb_trees:update(Receiver, OldRes + Resources, NChildren),
 
                     Receiver ! Resources,
-                    receiveLoop(Gamma, Unit, Parent, {NNChildren, NumBiologicalChilds}, {Solutions, NBurnedSolutions})
+                    receiveLoop(Gamma, Unit, Parent, NNChildren, {Solutions, NBurnedSolutions})
             end;
         NewResources ->
             NChildren = case gb_trees:is_empty(Children) of
@@ -79,7 +79,7 @@ receiveLoop(Gamma, Unit, Parent, {Children, NumBiologicalChilds}, {Solutions, Bu
                     Children
             end,
 
-            receiveLoop(Gamma, Unit, Parent, {NChildren, NumBiologicalChilds}, {Solutions, BurnedSolutions})
+            receiveLoop(Gamma, Unit, Parent, NChildren, {Solutions, BurnedSolutions})
  %           case NumBiologicalChilds of
  %               0 ->
  %                   
