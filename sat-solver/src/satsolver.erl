@@ -19,11 +19,6 @@ solve(CNF) ->
     end.
 
 master(Gamma, Unit, Parent, Resources, Solutions) ->
-%    Literal = someLiteral(Gamma),
-    
-    
-    
-    
     {NGamma, NUnit} = unitPropagation(Gamma, Unit),
     case gb_sets:is_empty(NGamma) of
         true -> Parent ! {sat, gb_sets:to_list(NUnit)};
@@ -67,10 +62,10 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
             NChildren = case gb_trees:is_empty(Children) of
                 true ->
                     Literal = someLiteral(Gamma),
-        
+
                     UnitClause = gb_sets:singleton(Literal),
                     UnitClauseNegated = gb_sets:singleton(-Literal),
-        
+
                     {Res1, Res2} = halves(NewResources),
                     Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
                     Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
@@ -78,14 +73,7 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
                 false ->
                     Children
             end,
-
             receiveLoop(Gamma, Unit, Parent, NChildren, {Solutions, BurnedSolutions})
- %           case NumBiologicalChilds of
- %               0 ->
- %                   
- %               1 ->
- %                   todo
-        %Resources -> Parent ! Resources
     end.
 
 
