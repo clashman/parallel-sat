@@ -21,10 +21,12 @@ solve(CNF) ->
 master(Gamma, Unit, Parent, Resources, Solutions) ->
     {NGamma, NUnit} = unitPropagation(Gamma, Unit),
     case gb_sets:is_empty(NGamma) of
-        true -> Parent ! {sat, gb_sets:to_list(NUnit)};
+        true ->
+            Parent ! {sat, gb_sets:to_list(NUnit)};
         false ->
             case gb_sets:is_element(gb_sets:new(), NGamma) of
-                true -> Parent ! {unsat, self(), Solutions};
+                true ->
+                    Parent ! {unsat, self(), Solutions};
                 false ->
                     case Resources of
                         0 -> nop;
@@ -49,7 +51,8 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
             NChildren = gb_trees:delete(Child, Children),
             NBurnedSolutions = NewBurnedSolutions + BurnedSolutions,
             case Solutions - NBurnedSolutions of
-                0 -> Parent ! {unsat, self(), NBurnedSolutions};
+                0 ->
+                    Parent ! {unsat, self(), NBurnedSolutions};
                 _ ->
                     {Receiver, OldRes} = gb_trees:smallest(NChildren),
                     NNChildren = gb_trees:update(Receiver, OldRes + Resources, NChildren),
