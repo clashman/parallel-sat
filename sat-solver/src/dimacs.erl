@@ -30,7 +30,7 @@ nextLine(Fd, CNF, Variables) ->
             nextLine(Fd, CNF, Variables);
         [$p|_] -> parseProblemLine(Fd, Line, CNF, Variables);
         eof -> case CNF of
-                   [[]|Clauses] -> Clauses;
+                   [[]|Clauses] -> {Clauses, Variables};
                    _ -> {CNF, Variables}% throw(last_clause_not_terminated_with_0)
                end;
         _  -> parseClause(Fd, Line, CNF, Variables)
