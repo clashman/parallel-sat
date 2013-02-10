@@ -12,9 +12,10 @@ solve(CNF) ->
     receive
         {sat, Solution} ->
             %TODO kill children
+            io:format("found solution\n"),
             {sat, Solution};
         {unsat, _, BurnedSolutions} ->
-            io:format("tested ~B possibilities\n", [BurnedSolutions]),
+            io:format("tested ~B possibilities (unsat)\n", [BurnedSolutions]),
             unsat
     end.
 
