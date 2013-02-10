@@ -1,11 +1,11 @@
 -module(test).
 
--export([test/0]).
+-export([solver/0]).
 
 -compile(export_all).
 
 
-test() ->
+solver() ->
     {ok, CNF} = dimacs:parse("../cnf/3sat-unsat-minimal.cnf"),
     Solution = satsolver:solve(CNF),
     R1 = check(CNF, Solution, unsat),
