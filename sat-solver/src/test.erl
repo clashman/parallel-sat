@@ -4,19 +4,10 @@
 
 -compile(export_all).
 
-
 solver() ->
-    {ok, CNF} = dimacs:parse("../cnf/3sat-unsat-minimal.cnf"),
-    Solution = satsolver:solve(CNF),
-    R1 = check(CNF, Solution, unsat),
-
-    {ok, CNF2} = dimacs:parse("../cnf/aim-50-1_6-yes1-4.cnf"),
-    Solution2 = satsolver:solve(CNF2),
-    R2 = check(CNF2, Solution2, sat),
-
-    {ok, CNF3} = dimacs:parse("../cnf/aim-50-1_6-yes1-4_UNSAT.cnf"),
-    Solution3 = satsolver:solve(CNF3),
-    R3 = check(CNF3, Solution3, unsat),
+    R1 = check("../cnf/3sat-unsat-minimal.cnf", unsat),
+    R2 = check("../cnf/aim-50-1_6-yes1-4.cnf", sat),
+    R3 = check("../cnf/aim-50-1_6-yes1-4_UNSAT.cnf", unsat),
 
     io:format("---------\n"),
     print(1, R1),
@@ -29,7 +20,10 @@ solver() ->
         false -> fail
     end.
 
-check(CNF, Solution, ExpectedResult) ->
+check(DimacsFile, ExpectedResult) ->
+    {ok, CNF} = dimacs:parse(DimacsFile),
+    Solution = satsolver:solve(CNF),
+
     case Solution of
         {sat, _Unit} ->
             case ExpectedResult of
