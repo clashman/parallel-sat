@@ -53,10 +53,10 @@ eliminate(Literal, Gamma) ->
     NGamma = gb_sets:filter(fun(Clause) -> gb_sets:is_element(Literal, Clause) == false end, Gamma), %only keep clauses containing Literals
     map(fun(Clause) -> gb_sets:delete_any(-Literal, Clause) end, NGamma).   %remove -Literal from all clauses
 
-
-
 someLiteral(Gamma) ->
     gb_sets:smallest(gb_sets:smallest(Gamma)).
+
+
 
 map(F, Set) ->
     map(F, gb_sets:iterator(Set), gb_sets:new()).
