@@ -5,20 +5,25 @@
 -compile(export_all).
 
 solver() ->
-    R1 = check("../cnf/3sat-unsat-minimal.cnf", unsat),
-    R2 = check("../cnf/aim-50-1_6-yes1-4.cnf", sat),
-    R3 = check("../cnf/aim-50-1_6-yes1-4_UNSAT.cnf", unsat),
+    CNFs = [{"../cnf/3sat-unsat-minimal.cnf", unsat},
+            {"../cnf/aim-50-1_6-yes1-4.cnf", sat},
+            {"../cnf/aim-50-1_6-yes1-4_UNSAT.cnf", unsat}
+            ],
+    
+    Results = lists:map(fun({CNF, ExpectedResult}) -> check(CNF, ExpectedResult) end, CNFs),
 
     io:format("---------\n"),
-    print(1, R1),
-    print(2, R2),
-    print(3, R3),
+    lists:foldl(fun(Result, N) -> print(N, Result), N+1 end, 1, Results),
     io:format("---------\n"),
 
-    case (R1 == R2) and (R2 == R3) and (R3 == ok) of
-        true -> ok;
-        false -> fail
-    end.
+    BothOk = fun(First, Second) ->
+                 case (First == Second) and (Second == ok) of
+                     true -> ok;
+                     false -> fail
+                 end
+             end,
+
+    _AllOk = lists:foldl(BothOk, ok, Results).
 
 check(DimacsFile, ExpectedResult) ->
     {ok, CNF} = dimacs:parse(DimacsFile),
