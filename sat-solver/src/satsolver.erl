@@ -160,22 +160,3 @@ someLiteral(Gamma) ->
 
 nonContradictoryLiterals(Literals) ->
     gb_sets:is_empty(gb_sets:filter(fun(Literal) -> gb_sets:is_element(-Literal, Literals) end, Literals)).
-    
-
-
-
-
-
-
-testSolution({CNF, _NumVariables}, {sat, SolutionList}) ->
-    Solution = gb_sets:from_list(SolutionList),
-    ContradictoryLiterals = gb_sets:filter(fun(Literal) -> gb_sets:is_element(-Literal, Solution) end, Solution),
-    case gb_sets:is_empty(ContradictoryLiterals) of
-        false -> invalid_contradictory_literals;
-        true ->
-            UnsatisfiedClauses = gb_sets:filter(fun(Clause) -> gb_sets:is_disjoint(Clause, Solution) end, CNF),
-            case gb_sets:is_empty(UnsatisfiedClauses) of
-                true -> ok;
-                false -> invalid_unsatisfied_clauses
-            end
-    end.

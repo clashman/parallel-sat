@@ -1,8 +1,6 @@
 -module(test).
 
--export([solver/0]).
-
--compile(export_all).
+-export([solver/0, testSolution/2]).
 
 solver() ->
     CNFs = [{"../cnf/3sat-unsat-minimal.cnf", unsat},
@@ -34,7 +32,7 @@ check(DimacsFile, ExpectedResult) ->
             case ExpectedResult of
                 unsat -> fail;
                 sat ->
-                    Result = satsolver:testSolution(CNF, Solution),
+                    Result = testSolution(CNF, Solution),
                     case Result of
                         ok -> ok;
                         _ -> fail
@@ -53,3 +51,16 @@ print(N, ok) ->
 print(N, fail) ->
     io:format("~B: FAIL\n", [N]),
     fail.
+
+testSolution({CNF, _NumVariables}, {sat, SolutionLiterals}) ->
+Solution = gb_sets:from_list(SolutionLiterals),
+ContradictoryLiterals = gb_sets:filter(fun(Literal) -> gb_sets:is_element(-Literal, Solution) end, Solution),
+case gb_sets:is_empty(ContradictoryLiterals) of
+    false -> invalid_contradictory_literals;
+    true ->
+        UnsatisfiedClauses = gb_sets:filter(fun(Clause) -> gb_sets:is_disjoint(Clause, Solution) end, CNF),
+        case gb_sets:is_empty(UnsatisfiedClauses) of
+            true -> ok;
+            false -> invalid_unsatisfied_clauses
+        end
+end.
