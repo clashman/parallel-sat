@@ -7,11 +7,9 @@
 solve(CNF) ->
     Unit = gb_sets:new(),
     {Formula, NumVariables} = CNF,
-    %TODO spawn and listen
     spawn(?MODULE, master, [Formula, Unit, self(), 4, pow(2, NumVariables)]),
     receive
         {sat, Solution} ->
-            %TODO kill children
             io:format("found solution\n"),
             {sat, Solution};
         {unsat, _, BurnedSolutions} ->
@@ -43,6 +41,7 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
     receive
         {sat, Solution} ->
             Parent ! {sat, Solution};
+            %TODO kill children
             %lists:map(fun(Child) -> exit(Child, sat) end, Children);
         {unsat, Child, NewBurnedSolutions} ->
             io:format("burned ~B possibilities\n", [NewBurnedSolutions]),
