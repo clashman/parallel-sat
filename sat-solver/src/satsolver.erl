@@ -33,10 +33,6 @@ master(Gamma, Unit, Parent, Resources, Solutions) ->
             end
     end.
 
-
-
-
-
 receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
     receive
         {sat, Solution} ->
@@ -75,34 +71,6 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
             receiveLoop(Gamma, Unit, Parent, NChildren, {Solutions, BurnedSolutions})
     end.
 
-
-halves(N) when N rem 2 == 0 -> {N div 2, N div 2};
-halves(N) -> {N div 2 + 1, N div 2}.
-
-
-dpll(OGamma, OUnit) ->
-    {Gamma, Unit} = unitPropagation(OGamma, OUnit),
-    case gb_sets:is_empty(Gamma) of
-        true -> {sat, gb_sets:to_list(Unit)};
-        false ->
-            case gb_sets:is_element(gb_sets:new(), Gamma) of
-                true -> unsat;
-                false ->
-                    Literal = someLiteral(Gamma),
-                    Disjunction = gb_sets:singleton(Literal),
-                    case dpll(gb_sets:insert(Disjunction, Gamma), Unit) of
-                        unsat ->
-                            DisjunctionWithNegatedLiteral = gb_sets:singleton(-Literal),
-                            NGamma = gb_sets:insert(DisjunctionWithNegatedLiteral, Gamma),
-                            dpll(NGamma, Unit);
-                        SAT -> SAT
-                    end
-            end
-    end.
-
-
-
-
 unitPropagation(Gamma, Unit) ->
     UnitClauses = gb_sets:filter(fun(Clause) -> gb_sets:size(Clause) == 1 end, Gamma),
     StandaloneLiterals = map(fun(UnitClause) -> gb_sets:smallest(UnitClause) end, UnitClauses),  %unpack unit clause literals
@@ -115,22 +83,17 @@ unitPropagation(Gamma, Unit) ->
             unitPropagation(NGamma, NUnit)
     end.
 
-
-%kann man leider nicht verwenden, da sonst die Performanz in den Keller geht
-
-%eliminate(Literals, Gamma) ->
-%    NGamma = gb_sets:filter(fun(Clause) -> gb_sets:is_empty(gb_sets:intersection(Literals, Clause)) end, Gamma),  %only keep clauses that don't contain any literal in Literals
-%
-%    NegatedLiterals = negateLiterals(Literals),
-%    F = fun(Clause) ->
-%            gb_sets:subtract(Clause, NegatedLiterals)
-%        end,
-%
-%    map(F, NGamma).
-
 eliminate(Literal, Gamma) ->
     NGamma = gb_sets:filter(fun(Clause) -> gb_sets:is_element(Literal, Clause) == false end, Gamma), %only keep clauses containing Literal
     map(fun(Clause) -> gb_sets:delete_any(-Literal, Clause) end, NGamma).   %remove -Literal from all clauses
+
+someLiteral(Gamma) ->
+    gb_sets:smallest(gb_sets:smallest(Gamma)).
+
+halves(N) when N rem 2 == 0 -> {N div 2, N div 2};
+halves(N) -> {N div 2 + 1, N div 2}.
+
+
 
 pow(N, M) ->
     pow(N, M, 1).
@@ -138,8 +101,6 @@ pow(_, 0, Acc) ->
     Acc;
 pow(N, M, Acc) ->
     pow(N, M-1, Acc * N).
-
-
 
 map(F, Set) ->
     map(F, gb_sets:iterator(Set), gb_sets:new()).
@@ -150,12 +111,3 @@ map(F, SetIterator, Acc) ->
             map(F, NextIterator, gb_sets:add(F(Element), Acc));
         none -> Acc
     end.
-
-negateLiterals(Clause) ->
-    map(fun(Literal) -> -Literal end, Clause).
-
-someLiteral(Gamma) ->
-    gb_sets:smallest(gb_sets:smallest(Gamma)).
-
-nonContradictoryLiterals(Literals) ->
-    gb_sets:is_empty(gb_sets:filter(fun(Literal) -> gb_sets:is_element(-Literal, Literals) end, Literals)).
