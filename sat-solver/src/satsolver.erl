@@ -1,13 +1,12 @@
 -module(satsolver).
 
--export([solve/1]).
-
--compile(export_all).
+%TODO use internal spawn and don't export node/5
+-export([solve/1, node/5]).
 
 solve(CNF) ->
     Unit = gb_sets:new(),
     {Formula, NumVariables} = CNF,
-    spawn(?MODULE, master, [Formula, Unit, self(), 4, pow(2, NumVariables)]),
+    spawn(?MODULE, node, [Formula, Unit, self(), 4, pow(2, NumVariables)]),
     receive
         {sat, Solution} ->
             io:format("found solution\n"),
@@ -17,7 +16,7 @@ solve(CNF) ->
             unsat
     end.
 
-master(Gamma, Unit, Parent, Resources, Solutions) ->
+node(Gamma, Unit, Parent, Resources, Solutions) ->
     {NGamma, NUnit} = unitPropagation(Gamma, Unit),
     case gb_sets:is_empty(NGamma) of
         true -> Parent ! {sat, gb_sets:to_list(NUnit)};
@@ -64,8 +63,8 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
                     UnitClauseNegated = gb_sets:singleton(-Literal),
 
                     {Res1, Res2} = halves(NewResources),
-                    Child1 = spawn(?MODULE, master, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
-                    Child2 = spawn(?MODULE, master, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
+                    Child1 = spawn(?MODULE, node, [gb_sets:insert(UnitClause, Gamma), Unit, self(), Res1, Solutions div 2]),
+                    Child2 = spawn(?MODULE, node, [gb_sets:insert(UnitClauseNegated, Gamma), Unit, self(), Res2, Solutions div 2]),
                     gb_trees:insert(Child1, Res1, gb_trees:insert(Child2, Res2, gb_trees:empty()))
             end,
             receiveLoop(Gamma, Unit, Parent, NChildren, {Solutions, BurnedSolutions})
