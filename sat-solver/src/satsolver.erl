@@ -25,7 +25,7 @@ node(Gamma, Unit, Parent, Resources, Solutions) ->
                 true -> Parent ! {unsat, self(), Solutions};
                 false ->
                     case Resources of
-                        0 -> nop;
+                        0 -> ok;
                         _ -> self() ! Resources
                     end,
                     receiveLoop(NGamma, NUnit, Parent, gb_trees:empty(), {Solutions, 0})
