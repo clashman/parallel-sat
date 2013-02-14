@@ -97,12 +97,10 @@ halves(N) -> {N div 2 + 1, N div 2}.
 
 
 
+pow(N, 1) -> N;
 pow(N, M) ->
-    pow(N, M, 1).
-pow(_, 0, Acc) ->
-    Acc;
-pow(N, M, Acc) ->
-    pow(N, M-1, Acc * N).
+    {M1,M2} = halves(M),
+    pow(N,M1) * pow(N,M2).
 
 map(F, Set) ->
     map(F, gb_sets:iterator(Set), gb_sets:new()).
