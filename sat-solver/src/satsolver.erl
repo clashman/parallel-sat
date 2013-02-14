@@ -40,7 +40,7 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
             %lists:map(fun(Child) -> exit(Child, sat) end, Children);
         {unsat, Child, NewBurnedSolutions} ->
             io:format("burned ~B possibilities\n", [NewBurnedSolutions]),
-            Resources = gb_trees:get(Child, Children),
+            ReleasedResources = gb_trees:get(Child, Children),
             NChildren = gb_trees:delete(Child, Children),
             NBurnedSolutions = NewBurnedSolutions + BurnedSolutions,
             case Solutions - NBurnedSolutions of
@@ -48,9 +48,9 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
                     Parent ! {unsat, self(), NBurnedSolutions};
                 _ ->
                     {Receiver, CurrentResources} = gb_trees:smallest(NChildren),
-                    NNChildren = gb_trees:update(Receiver, CurrentResources + Resources, NChildren),
+                    NNChildren = gb_trees:update(Receiver, CurrentResources + ReleasedResources, NChildren),
 
-                    Receiver ! Resources,
+                    Receiver ! ReleasedResources,
                     receiveLoop(Gamma, Unit, Parent, NNChildren, {Solutions, NBurnedSolutions})
             end;
         NewResources ->
