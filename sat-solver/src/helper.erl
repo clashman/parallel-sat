@@ -19,3 +19,13 @@ map(F, SetIterator, Acc) ->
             map(F, NextIterator, gb_sets:add(F(Element), Acc));
         none -> Acc
     end.
+
+string_to_integer(String) ->
+    case string:to_integer(String) of
+        {I, _} when is_integer(I) -> I;
+        _ -> throw(non_integer_in_clause)
+    end.
+
+to_sets(CNF) ->
+    ClauseList = lists:map(fun gb_sets:from_list/1, CNF),
+    gb_sets:from_list(ClauseList).
