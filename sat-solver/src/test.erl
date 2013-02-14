@@ -14,14 +14,10 @@ solver() ->
     lists:foldl(fun(Result, N) -> print(N, Result), N+1 end, 1, Results),
     io:format("---------\n"),
 
-    BothOk = fun(First, Second) ->
-                 case (First == Second) and (Second == ok) of
-                     true -> ok;
-                     false -> fail
-                 end
-             end,
-
-    _AllOk = lists:foldl(BothOk, ok, Results).
+    case lists:all(fun(Result) -> Result == ok end, Results) of
+        true -> ok;
+        false -> fail
+    end.
 
 check(DimacsFile, ExpectedResult) ->
     {ok, CNF} = dimacs:parse(DimacsFile),
@@ -45,12 +41,13 @@ check(DimacsFile, ExpectedResult) ->
             end
     end.
 
-print(N, ok) ->
-    io:format("~B: ok\n", [N]),
-    ok;
-print(N, fail) ->
-    io:format("~B: FAIL\n", [N]),
-    fail.
+print(N, Result) ->
+    case N of
+        -1 -> ok;
+        _ -> io:format("~B: ", [N])
+    end,
+    io:format(atom_to_list(Result) ++ "\n"),
+    Result.
 
 testSolution({CNF, _NumVariables}, {sat, SolutionLiterals}) ->
 Solution = gb_sets:from_list(SolutionLiterals),
