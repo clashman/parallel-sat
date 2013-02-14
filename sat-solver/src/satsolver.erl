@@ -47,18 +47,18 @@ receiveLoop(Gamma, Unit, Parent, Children, {Solutions, BurnedSolutions}) ->
                 0 ->
                     Parent ! {unsat, self(), NBurnedSolutions};
                 _ ->
-                    {Receiver, OldRes} = gb_trees:smallest(NChildren),
-                    NNChildren = gb_trees:update(Receiver, OldRes + Resources, NChildren),
+                    {Child, OldRes} = gb_trees:smallest(NChildren),
+                    NNChildren = gb_trees:update(Child, OldRes + Resources, NChildren),
 
-                    Receiver ! Resources,
+                    Child ! Resources,
                     receiveLoop(Gamma, Unit, Parent, NNChildren, {Solutions, NBurnedSolutions})
             end;
         NewResources ->
             NChildren = case gb_trees:is_empty(Children) of
                 false ->
-                    {Receiver, OldRes} = gb_trees:smallest(Children),
-                    Receiver ! NewResources,
-                    gb_trees:update(Receiver, OldRes + NewResources, Children);
+                    {Child, OldRes} = gb_trees:smallest(Children),
+                    Child ! NewResources,
+                    gb_trees:update(Child, OldRes + NewResources, Children);
                 true ->
                     Literal = someLiteral(Gamma),
 
